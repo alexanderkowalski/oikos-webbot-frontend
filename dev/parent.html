@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Testseite Elternseite</title>
+    <style>
+      body { margin: 0; font: 14px/1.4 system-ui, sans-serif; display: grid; grid-template-columns: 1fr 420px; height: 100vh; }
+      main { padding: 16px; overflow: auto; }
+      iframe { width: 420px; height: 100vh; border: 0; border-left: 1px solid #ccc; }
+      label { display: block; margin: 8px 0 2px; }
+      input { width: 100%; box-sizing: border-box; padding: 4px; }
+      pre { background: #f4f4f4; padding: 8px; font-size: 12px; white-space: pre-wrap; }
+      button { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Testseite (stellt die Website des Tenants nach)</h1>
+      <p>Lokal: <code>npm run dev:parent</code> → http://localhost:5174/?tenant=hh. Der Origin dieser Seite muss in <code>WEBCHAT_DEV_PARENT_ORIGINS</code> stehen.</p>
+      <label>location <input id="location" /></label>
+      <label>JourneyID <input id="journey" value="journey-test-1" /></label>
+      <label>UserPseudoID <input id="pseudo" value="" placeholder="leer = Cookie-Banner noch nicht bestätigt" /></label>
+      <button id="send">Tracking-Daten an das iframe senden</button>
+      <h2>Empfangene ga4Event-Nachrichten</h2>
+      <pre id="log">(noch keine)</pre>
+    </main>
+    <iframe id="chat" title="Chat"></iframe>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const chatOrigin = params.get("chat") || "http://localhost:5173";
+      const tenant = params.get("tenant") || "hh";
+      const frame = document.getElementById("chat");
+      frame.src = `${chatOrigin}/iframe/${encodeURIComponent(tenant)}`;
+      document.getElementById("location").value = `${location.origin}/haeuser/bungalow`;
+
+      const send = () =>
+        frame.contentWindow.postMessage(
+          {
+            location: document.getElementById("location").value,
+            JourneyID: document.getElementById("journey").value,
+            UserPseudoID: document.getElementById("pseudo").value,
+          },
+          chatOrigin,
+        );
+      frame.addEventListener("load", send);
+      document.getElementById("send").addEventListener("click", send);
+
+      const log = document.getElementById("log");
+      let entries = [];
+      window.addEventListener("message", (event) => {
+        if (event.origin !== chatOrigin || event.source !== frame.contentWindow) return;
+        entries = [JSON.stringify(event.data, null, 2), ...entries].slice(0, 30);
+        log.textContent = entries.join("\n\n");
+      });
+    </script>
+  </body>
+</html>

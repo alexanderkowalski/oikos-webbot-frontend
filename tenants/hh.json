@@ -1,0 +1,60 @@
+{
+  "runtime": {
+    "tenantId": "hh",
+    "agentId": "webbot",
+    "apiKeyEnv": "WEBCHAT_RUNTIME_API_KEY_HH"
+  },
+  "model": {
+    "name": "gpt-6-luna",
+    "reasoningEffort": "LOW",
+    "maxOutputTokens": 16000
+  },
+  "parentOrigins": [
+    "https://www.hanse-haus.de"
+  ],
+  "limits": {
+    "maxMessageLength": 2000,
+    "maxUserMessagesPerConversation": 50,
+    "messagesPerMinutePerIp": 20,
+    "messagesPerMinutePerConversation": 8,
+    "conversationsPerHourPerIp": 30
+  },
+  "presentation": {
+    "language": "de",
+    "assistantName": "Clara Lehmann",
+    "subtitle": "Ihre KI-Assistentin",
+    "avatarUrl": "https://storage.googleapis.com/bot-public-592574206588/hh-avatar-64x64.png",
+    "colors": {
+      "primary": "#0089b3",
+      "secondary": "#E40026",
+      "headerText": "#ffffff",
+      "subtitleText": "#ffffff",
+      "userMessageText": "#ffffff",
+      "assistantLink": "#0089b3"
+    },
+    "welcomeMessage": "Ich bin Clara Lehmann, Ihre KI-Assistentin. Gerne begleite ich Sie durch Ihre ersten Schritte mit Hanse Haus – was ist Ihr Anliegen?",
+    "disclaimer": "Auch Clara kann Fehler machen – unser Team steht jederzeit für Sie bereit.",
+    "messagePlaceholder": "Ihre Nachricht an Clara …"
+  },
+  "consentButtons": {
+    "accepted": ["✅ Ich akzeptiere", "✅ I accept"],
+    "denied": ["❌ Ich akzeptiere nicht", "❌ I do not accept"]
+  },
+  "referrerHosts": ["ai.hanse-haus.de"],
+  "texts": {
+    "send": "Senden",
+    "typing": "Antwort wird erstellt",
+    "retry": "Erneut senden",
+    "toggleTheme": "Hell/Dunkel umschalten",
+    "errors": {
+      "generic": "Das hat leider nicht geklappt. Bitte versuchen Sie es noch einmal.",
+      "unavailable": "Ich bin gerade nicht erreichbar. Bitte versuchen Sie es in einem Moment noch einmal.",
+      "messageTooLong": "Ihre Nachricht ist zu lang. Bitte fassen Sie sich etwas kürzer (höchstens {max} Zeichen).",
+      "conversationLimit": "Dieses Gespräch hat die maximale Länge erreicht. Für weitere Fragen erreichen Sie unser Team gern über das Kontaktformular.",
+      "rateLimited": "Sie haben gerade sehr viele Nachrichten gesendet. Bitte warten Sie einen Moment.",
+      "busy": "Ich antworte noch auf Ihre letzte Nachricht. Bitte warten Sie einen Moment.",
+      "incomplete": "Die Antwort wurde leider nicht vollständig erstellt.",
+      "sessionExpired": "Das Gespräch konnte nicht fortgesetzt werden und wurde neu gestartet."
+    }
+  }
+}

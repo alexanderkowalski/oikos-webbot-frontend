@@ -1,0 +1,49 @@
+{
+  "name": "oikos-webchat-bff",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n bff,web \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch --env-file=.env src/server/index.ts",
+    "dev:web": "vite",
+    "build": "vite build && esbuild src/server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server/index.js",
+    "start": "node --env-file-if-exists=.env dist/server/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate:rpc": "buf generate ../agent-runtime-feature-rust-rewrite/proto --template buf.gen.yaml --path ../agent-runtime-feature-rust-rewrite/proto/agent/conversations/v1/conversations.proto --path ../agent-runtime-feature-rust-rewrite/proto/agent/common/v1/common.proto",
+    "dev:parent": "node dev/parent-server.mjs"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.16.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-node": "2.2.0",
+    "@hono/node-server": "2.1.6",
+    "hono": "4.13.17",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-breaks": "4.0.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.75.0",
+    "@bufbuild/protoc-gen-es": "2.16.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "concurrently": "10.0.7",
+    "esbuild": "0.28.2",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.1.0"
+  }
+}

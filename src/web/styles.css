@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tenant-Farben setzt App.tsx aus dem Bootstrap als --wc-*-Variablen. */
+@theme inline {
+  --color-primary: var(--wc-primary);
+  --color-secondary: var(--wc-secondary);
+  --color-header-text: var(--wc-header-text);
+  --color-subtitle-text: var(--wc-subtitle-text);
+  --color-user-text: var(--wc-user-text);
+  --color-assistant-link: var(--wc-assistant-link);
+  --color-page: var(--wc-page);
+  --color-surface: var(--wc-surface);
+  --color-ink: var(--wc-ink);
+  --color-muted: var(--wc-muted);
+  --color-line: var(--wc-line);
+}
+
+:root {
+  --wc-page: #f4f6f8;
+  --wc-surface: #ffffff;
+  --wc-ink: #1b1f24;
+  --wc-muted: #5f6b76;
+  --wc-line: #dde3e8;
+  color-scheme: light;
+}
+
+:root.dark {
+  --wc-page: #121518;
+  --wc-surface: #1d2226;
+  --wc-ink: #e8ecef;
+  --wc-muted: #9aa6b0;
+  --wc-line: #2e353b;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--wc-page);
+  color: var(--wc-ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.chat-markdown {
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.chat-markdown p + p,
+.chat-markdown p + ul,
+.chat-markdown p + ol,
+.chat-markdown ul + p,
+.chat-markdown ol + p {
+  margin-top: 0.5rem;
+}
+.chat-markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.chat-markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.chat-markdown strong {
+  font-weight: 600;
+}
+.chat-markdown a {
+  color: var(--wc-assistant-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fade-in {
+  animation: fade-in 160ms ease-out both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.typing-dot {
+  animation: typing-wave 1.3s ease-in-out infinite both;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+@keyframes typing-wave {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot,
+  .fade-in {
+    animation: none;
+  }
+}
