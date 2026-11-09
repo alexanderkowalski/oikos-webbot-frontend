@@ -151,6 +151,26 @@ describe("Webchat-API", () => {
     expect(full.calls.some((call) => call.method === "streamResponse")).toBe(false);
   });
 
+  it("lehnt Anfragen über 32 KB ab, bevor sie eingelesen werden", async () => {
+    const { app, calls } = setup();
+    const token = await newToken(app);
+    const body = JSON.stringify({ requestId: "req-msg-1", text: "x".repeat(40_000) });
+    const expected = { error: { code: "message_too_long", message: expect.stringContaining("2000"), retryable: false } };
+
+    const streamed = await post(app, `/wc/api/hh/conversations/${token}/messages`, JSON.parse(body));
+    expect(streamed.status).toBe(413);
+    expect(await streamed.json()).toMatchObject(expected);
+
+    const declared = await app.request(`/wc/api/hh/conversations/${token}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: ORIGIN, "Content-Length": String(body.length) },
+      body,
+    });
+    expect(declared.status).toBe(413);
+    expect(await declared.json()).toMatchObject(expected);
+    expect(calls.some((call) => call.method === "streamResponse")).toBe(false);
+  });
+
   it("lehnt eine zweite Nachricht ab, solange eine Antwort läuft", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));

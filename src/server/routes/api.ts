@@ -1,6 +1,7 @@
 // Webchat-API unter /wc/api/:tenant. Der Browser spricht nur mit diesen Routen.
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -27,6 +28,8 @@ type Env = { Variables: { tenant: Tenant; ip: string } };
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const HISTORY_READS_PER_MINUTE = 30;
+// Reicht für die längste erlaubte Nachricht plus Tracking-Daten mit Abstand.
+const MAX_BODY_BYTES = 32 * 1024;
 
 class HttpError extends Error {
   readonly status: ContentfulStatusCode;
@@ -120,6 +123,9 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     c.set("ip", clientIp(forwardedFor, socket, env.WEBCHAT_TRUSTED_PROXY_COUNT));
     await next();
   });
+
+  // Zu große Anfragen gar nicht erst einlesen. Die genaue Zeichengrenze prüft danach die Route.
+  app.use("/:tenant/*", bodyLimit({ maxSize: MAX_BODY_BYTES, onError: (c) => fail(c.get("tenant"), 413, "message_too_long") }));
 
   app.get("/:tenant/bootstrap", (c) => {
     c.header("Cache-Control", "no-cache");
