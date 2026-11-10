@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { type FormEvent, type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
 
 type Props = {
   placeholder: string;
@@ -18,6 +18,7 @@ export function Composer({ placeholder, sendLabel, maxLength, tooLong, busy, onS
   const overLimit = length > maxLength;
   const canSend = !busy && text.trim() !== "" && !overLimit;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: text löst die Höhenanpassung bewusst nur aus
   useLayoutEffect(() => {
     const element = area.current;
     if (!element) return;
@@ -58,7 +59,17 @@ export function Composer({ placeholder, sendLabel, maxLength, tooLong, busy, onS
           title={sendLabel}
           className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-user-text transition-opacity disabled:opacity-50"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M14.54 21.69a.5.5 0 0 0 .94-.03l6.5-19a.5.5 0 0 0-.64-.64l-19 6.5a.5.5 0 0 0-.03.94l7.93 3.18a2 2 0 0 1 1.11 1.11z" />
             <path d="m21.85 2.15-10.94 10.94" />
           </svg>

@@ -50,7 +50,6 @@ export function mergeTrackingMetadata(current: Record<string, string>, tracking:
   }
 
   const changed =
-    Object.keys(next).length !== Object.keys(current).length ||
-    Object.entries(next).some(([key, value]) => current[key] !== value);
+    Object.keys(next).length !== Object.keys(current).length || Object.entries(next).some(([key, value]) => current[key] !== value);
   return changed ? next : null;
 }

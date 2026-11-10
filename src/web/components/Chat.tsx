@@ -41,6 +41,7 @@ export function Chat({ bootstrap, storage }: { bootstrap: Bootstrap; storage: St
   // Mitscrollen, solange der Nutzer unten ist
   const list = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages und notice lösen das Scrollen bewusst nur aus
   useEffect(() => {
     const element = list.current;
     if (element && pinned.current) element.scrollTop = element.scrollHeight;

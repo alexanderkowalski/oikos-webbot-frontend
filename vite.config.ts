@@ -1,6 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 
 // Im Build liefert der BFF index.html unter /iframe/:tenant aus. Im Dev-Modus
 // übernimmt Vite das; die CSP setzt dann nur der BFF im Build (npm run build && npm start).
@@ -15,20 +15,24 @@ const iframeRoute = (): Plugin => ({
 });
 
 // Das Chatfenster liegt unter /iframe/:tenant, seine Assets unter /wc/.
-// Im Dev-Modus leitet Vite die Webchat-API an den BFF (Port 8080) weiter.
-export default defineConfig({
-  base: "/wc/",
-  root: "src/web",
-  plugins: [react(), tailwindcss(), iframeRoute()],
-  build: {
-    outDir: "../../dist/web",
-    emptyOutDir: true,
-  },
-  server: {
-    port: 5173,
-    strictPort: true,
-    proxy: {
-      "/wc/api": "http://localhost:8080",
+// Im Dev-Modus leitet Vite die Webchat-API an den BFF weiter; den Port liest es aus PORT in der .env.
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const bffPort = env.PORT || "8090";
+  return {
+    base: "/wc/",
+    root: "src/web",
+    plugins: [react(), tailwindcss(), iframeRoute()],
+    build: {
+      outDir: "../../dist/web",
+      emptyOutDir: true,
     },
-  },
+    server: {
+      port: 5173,
+      strictPort: true,
+      proxy: {
+        "/wc/api": `http://localhost:${bffPort}`,
+      },
+    },
+  };
 });

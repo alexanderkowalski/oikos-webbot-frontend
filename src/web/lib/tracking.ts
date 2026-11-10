@@ -26,10 +26,7 @@ export type Ga4Event = {
 
 const nonEmpty = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
 
-export function buildGa4Event(
-  input: { step: string; interactionOption1?: string; linkUrl?: string },
-  tracking: Tracking,
-): Ga4Event {
+export function buildGa4Event(input: { step: string; interactionOption1?: string; linkUrl?: string }, tracking: Tracking): Ga4Event {
   const event: Ga4Event = {
     event: "ga4Event",
     eventName: "button_click",

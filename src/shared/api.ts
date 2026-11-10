@@ -3,6 +3,9 @@ import { z } from "zod";
 
 export const TRACKING_VALUE_MAX = 2048;
 
+/** Header mit dem Conversation-Token. Bewusst nicht in der URL, damit es nicht in Zugriffslogs landet. */
+export const CONVERSATION_TOKEN_HEADER = "X-Conversation-Token";
+
 const trackingValue = z.string().trim().max(TRACKING_VALUE_MAX).optional();
 
 /** Tracking-Daten der Elternseite, wie sie das Chatfenster per postMessage erhalten hat. */
@@ -14,9 +17,7 @@ export const TrackingSchema = z.object({
 });
 export type Tracking = z.infer<typeof TrackingSchema>;
 
-const requestId = z
-  .string()
-  .regex(/^[A-Za-z0-9_-]{8,64}$/, "requestId: 8 bis 64 Zeichen aus A-Z a-z 0-9 _ -");
+const requestId = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/, "requestId: 8 bis 64 Zeichen aus A-Z a-z 0-9 _ -");
 
 export const CreateConversationRequestSchema = z.object({
   requestId,
@@ -51,7 +52,6 @@ export const ERROR_CODES = [
   "not_found",
   "session_invalid",
   "message_too_long",
-  "conversation_limit",
   "rate_limited",
   "busy",
   "unavailable",
@@ -117,7 +117,6 @@ export const TextsSchema = z.object({
     generic: z.string(),
     unavailable: z.string(),
     messageTooLong: z.string(),
-    conversationLimit: z.string(),
     rateLimited: z.string(),
     busy: z.string(),
     incomplete: z.string(),

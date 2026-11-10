@@ -1,15 +1,16 @@
 // Client der Webchat-API. Spricht nur mit dem eigenen BFF unter /wc/api/:tenant.
 import {
-  ApiErrorResponseSchema,
-  BootstrapSchema,
-  CreateConversationResponseSchema,
-  HistoryResponseSchema,
-  StreamEventSchemas,
   type ApiError,
+  ApiErrorResponseSchema,
   type Bootstrap,
+  BootstrapSchema,
+  CONVERSATION_TOKEN_HEADER,
+  CreateConversationResponseSchema,
   type HistoryMessage,
+  HistoryResponseSchema,
   type StreamEvent,
   type StreamEventName,
+  StreamEventSchemas,
   type Tracking,
 } from "../../shared/api";
 
@@ -44,7 +45,7 @@ async function call(url: string, init?: RequestInit): Promise<Response> {
   );
 }
 
-const json = (body: unknown): RequestInit => ({
+const json = (body: unknown) => ({
   method: "POST",
   headers: { "Content-Type": "application/json", Accept: "text/event-stream, application/json" },
   body: JSON.stringify(body),
@@ -63,18 +64,25 @@ export const api = {
   },
 
   async history(tenant: string, token: string): Promise<HistoryMessage[]> {
-    const response = await call(`${base(tenant)}/conversations/${encodeURIComponent(token)}/messages`);
+    const response = await call(`${base(tenant)}/conversation/messages`, { headers: { [CONVERSATION_TOKEN_HEADER]: token } });
     return HistoryResponseSchema.parse(await response.json()).messages;
   },
 
   async send(tenant: string, token: string, body: { requestId: string; text: string; tracking: Tracking }, signal?: AbortSignal) {
-    return readEvents(await call(`${base(tenant)}/conversations/${encodeURIComponent(token)}/messages`, { ...json(body), signal }));
+    const init = json(body);
+    return readEvents(
+      await call(`${base(tenant)}/conversation/messages`, {
+        ...init,
+        headers: { ...init.headers, [CONVERSATION_TOKEN_HEADER]: token },
+        signal,
+      }),
+    );
   },
 
   async resume(tenant: string, token: string, responseId: string, after: string | undefined, signal?: AbortSignal) {
     const query = after === undefined ? "" : `?after=${encodeURIComponent(after)}`;
-    const url = `${base(tenant)}/conversations/${encodeURIComponent(token)}/responses/${encodeURIComponent(responseId)}/events${query}`;
-    return readEvents(await call(url, { signal, headers: { Accept: "text/event-stream" } }));
+    const url = `${base(tenant)}/conversation/responses/${encodeURIComponent(responseId)}/events${query}`;
+    return readEvents(await call(url, { signal, headers: { Accept: "text/event-stream", [CONVERSATION_TOKEN_HEADER]: token } }));
   },
 };
 

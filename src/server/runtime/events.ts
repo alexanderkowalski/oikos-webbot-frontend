@@ -1,28 +1,19 @@
 // Übersetzt ResponseEvents der Runtime in die Ereignisse der Webchat-API.
 // Der Browser bekommt nur den Text der Assistenten-Nachrichten, keine Zwischenmeldungen
 // (COMMENTARY) und kein Reasoning.
-import {
-  AssistantPhase,
-  MessageRole,
-  ResponseStatus,
-  type Item,
-  type ResponseEvent,
-} from "../gen/agent/conversations/v1/conversations_pb";
+
 import type { StreamEvent, Texts } from "../../shared/api";
+import { AssistantPhase, type Item, MessageRole, type ResponseEvent, ResponseStatus } from "../gen/agent/conversations/v1/conversations_pb";
 
 export function isVisibleAssistantMessage(item: Item) {
   return (
-    item.item.case === "message" &&
-    item.item.value.role === MessageRole.ASSISTANT &&
-    item.item.value.phase !== AssistantPhase.COMMENTARY
+    item.item.case === "message" && item.item.value.role === MessageRole.ASSISTANT && item.item.value.phase !== AssistantPhase.COMMENTARY
   );
 }
 
 export function messageText(item: Item) {
   if (item.item.case !== "message") return "";
-  return item.item.value.content
-    .map((part) => (part.part.case === "text" || part.part.case === "refusal" ? part.part.value : ""))
-    .join("");
+  return item.item.value.content.map((part) => (part.part.case === "text" || part.part.case === "refusal" ? part.part.value : "")).join("");
 }
 
 const ITEM_SEPARATOR = "\n\n";
@@ -70,9 +61,9 @@ export class ResponseEventMapper {
       }
       case "finished": {
         const response = value.value;
-        const status = (Object.keys(ResponseStatus) as (keyof typeof ResponseStatus)[]).find(
-          (key) => ResponseStatus[key] === response.status,
-        ) ?? "UNSPECIFIED";
+        const status =
+          (Object.keys(ResponseStatus) as (keyof typeof ResponseStatus)[]).find((key) => ResponseStatus[key] === response.status) ??
+          "UNSPECIFIED";
         this.finished = {
           responseId: response.id,
           status,

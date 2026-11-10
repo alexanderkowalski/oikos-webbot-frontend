@@ -1,18 +1,19 @@
 // Connect-Client für agent.conversations.v1.ResponsesService. Die drei Header kommen aus
 // der Tenant-Konfiguration; der Browser kann sie nicht beeinflussen.
 import { create } from "@bufbuild/protobuf";
-import { Code, ConnectError, createClient, type CallOptions } from "@connectrpc/connect";
+import { type CallOptions, Code, ConnectError, createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { PublicErrorSchema, ListOrder } from "../gen/agent/common/v1/common_pb";
+import type { Tenant } from "../config";
+import { ListOrder, PublicErrorSchema } from "../gen/agent/common/v1/common_pb";
 import {
   ContentPartSchema,
+  type Item,
   MessageRole,
   ReasoningEffort,
-  ResponsesService,
-  type Item,
   type ResponseEvent,
+  ResponsesService,
 } from "../gen/agent/conversations/v1/conversations_pb";
-import type { Tenant } from "../config";
+import { type IdTokenSource, idTokenInterceptor } from "./id-token";
 
 // Laut Runtime-Doku: Eine Response dauert höchstens 150 s, Clients warten mindestens 160 s.
 const DEADLINE_MS = 160_000;
@@ -21,11 +22,12 @@ const PAGE_SIZE = 100;
 
 export type RuntimeClient = ReturnType<typeof createRuntimeClient>;
 
-export function createRuntimeClient(baseUrl: string) {
+export function createRuntimeClient(baseUrl: string, auth: { idToken?: IdTokenSource } = {}) {
   const transport = createConnectTransport({
     baseUrl,
     httpVersion: "1.1",
     defaultTimeoutMs: DEADLINE_MS,
+    interceptors: auth.idToken ? [idTokenInterceptor(auth.idToken)] : [],
   });
   const client = createClient(ResponsesService, transport);
 
@@ -41,7 +43,6 @@ export function createRuntimeClient(baseUrl: string) {
   // Stream mit Fortsetzen wie in der Console (frontend/src/data/chat-client.ts): Reißt die
   // Verbindung ab, geht es mit SubscribeResponseEvents ab der letzten Sequenz weiter.
   async function* resumable(
-    tenant: Tenant,
     open: (responseId: string | undefined, after: bigint | undefined) => AsyncIterable<ResponseEvent>,
     knownResponseId?: string,
   ): AsyncIterable<ResponseEvent> {
@@ -79,22 +80,15 @@ export function createRuntimeClient(baseUrl: string) {
         options(tenant),
       ),
 
-    retrieveConversation: (tenant: Tenant, conversationId: string) =>
-      client.retrieveConversation({ conversationId }, options(tenant)),
+    retrieveConversation: (tenant: Tenant, conversationId: string) => client.retrieveConversation({ conversationId }, options(tenant)),
 
     updateConversation: (tenant: Tenant, conversationId: string, metadata: Record<string, string>) =>
       client.updateConversation({ conversationId, metadata }, options(tenant)),
 
-    retrieveResponse: (tenant: Tenant, responseId: string) =>
-      client.retrieveResponse({ responseId }, options(tenant)),
+    retrieveResponse: (tenant: Tenant, responseId: string) => client.retrieveResponse({ responseId }, options(tenant)),
 
-    /** Liest Verlaufsseiten, bis `stop` true liefert oder nichts mehr kommt. */
-    async listItems(
-      tenant: Tenant,
-      conversationId: string,
-      order: "asc" | "desc",
-      stop: (items: Item[]) => boolean = () => false,
-    ): Promise<Item[]> {
+    /** Liest alle Verlaufsseiten. */
+    async listItems(tenant: Tenant, conversationId: string, order: "asc" | "desc"): Promise<Item[]> {
       const items: Item[] = [];
       let after: string | undefined;
       for (;;) {
@@ -103,13 +97,13 @@ export function createRuntimeClient(baseUrl: string) {
           options(tenant),
         );
         items.push(...page.items);
-        if (!page.hasMore || page.items.length === 0 || stop(items)) return items;
+        if (!page.hasMore || page.items.length === 0) return items;
         after = page.items.at(-1)?.id;
       }
     },
 
     streamResponse: (tenant: Tenant, input: { requestId: string; conversationId: string; text: string }) =>
-      resumable(tenant, (responseId, after) =>
+      resumable((responseId, after) =>
         responseId
           ? client.subscribeResponseEvents({ responseId, startingAfter: after }, options(tenant))
           : client.streamResponse(
@@ -127,7 +121,6 @@ export function createRuntimeClient(baseUrl: string) {
 
     subscribe: (tenant: Tenant, responseId: string) =>
       resumable(
-        tenant,
         (id, after) => client.subscribeResponseEvents({ responseId: id ?? responseId, startingAfter: after }, options(tenant)),
         responseId,
       ),

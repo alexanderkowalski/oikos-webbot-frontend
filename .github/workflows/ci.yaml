@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, Typecheck, Tests, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@v7.1.0
+        with:
+          # wie im Dockerfile (node:22-slim)
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Abhängigkeiten der Produktion prüfen
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    name: Docker-Image bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: check
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - run: docker build --pull -t oikos-webbot-frontend:ci .

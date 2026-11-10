@@ -9,12 +9,9 @@
     "reasoningEffort": "LOW",
     "maxOutputTokens": 16000
   },
-  "parentOrigins": [
-    "https://www.hanse-haus.de"
-  ],
+  "parentOrigins": ["https://www.hanse-haus.de"],
   "limits": {
     "maxMessageLength": 2000,
-    "maxUserMessagesPerConversation": 50,
     "messagesPerMinutePerIp": 20,
     "messagesPerMinutePerConversation": 8,
     "conversationsPerHourPerIp": 30
@@ -50,7 +47,6 @@
       "generic": "Das hat leider nicht geklappt. Bitte versuchen Sie es noch einmal.",
       "unavailable": "Ich bin gerade nicht erreichbar. Bitte versuchen Sie es in einem Moment noch einmal.",
       "messageTooLong": "Ihre Nachricht ist zu lang. Bitte fassen Sie sich etwas kürzer (höchstens {max} Zeichen).",
-      "conversationLimit": "Dieses Gespräch hat die maximale Länge erreicht. Für weitere Fragen erreichen Sie unser Team gern über das Kontaktformular.",
       "rateLimited": "Sie haben gerade sehr viele Nachrichten gesendet. Bitte warten Sie einen Moment.",
       "busy": "Ich antworte noch auf Ihre letzte Nachricht. Bitte warten Sie einen Moment.",
       "incomplete": "Die Antwort wurde leider nicht vollständig erstellt.",

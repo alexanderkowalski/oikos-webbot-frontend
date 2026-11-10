@@ -7,7 +7,10 @@
 export function clientIp(forwardedFor: string | undefined, socketAddress: string | undefined, trustedProxies: number) {
   const fallback = socketAddress || "unknown";
   if (trustedProxies <= 0 || !forwardedFor) return fallback;
-  const entries = forwardedFor.split(",").map((entry) => entry.trim()).filter(Boolean);
+  const entries = forwardedFor
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
   if (entries.length === 0) return fallback;
   return entries[Math.max(0, entries.length - trustedProxies)] ?? fallback;
 }

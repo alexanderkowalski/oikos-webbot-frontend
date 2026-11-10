@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import type { Bootstrap } from "../shared/api";
 import { Chat } from "./components/Chat";
 import { api } from "./lib/api";

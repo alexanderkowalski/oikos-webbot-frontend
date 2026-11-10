@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bootstrap, StreamEvent, Tracking } from "../../shared/api";
-import { api, ApiFailure, newRequestId, StreamInterrupted } from "./api";
+import { ApiFailure, api, newRequestId, StreamInterrupted } from "./api";
 import type { Storage } from "./storage";
 
 export type ChatMessage = { key: string; role: "user" | "assistant"; text: string; streaming?: boolean };
@@ -25,8 +25,11 @@ export function useChat(bootstrap: Bootstrap, storage: Storage, currentTracking:
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const token = useRef<string | undefined>(storage.get<string>("token"));
 
-  const update = (key: string, change: (message: ChatMessage) => ChatMessage) =>
-    setMessages((list) => list.map((message) => (message.key === key ? change(message) : message)));
+  const update = useCallback(
+    (key: string, change: (message: ChatMessage) => ChatMessage) =>
+      setMessages((list) => list.map((message) => (message.key === key ? change(message) : message))),
+    [],
+  );
 
   const forgetConversation = useCallback(() => {
     token.current = undefined;
@@ -79,7 +82,7 @@ export function useChat(bootstrap: Bootstrap, storage: Storage, currentTracking:
         }
       }
     },
-    [bootstrap, storage, tenant],
+    [bootstrap, storage, tenant, update],
   );
 
   const run = useCallback(

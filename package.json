@@ -1,5 +1,5 @@
 {
-  "name": "oikos-webchat-bff",
+  "name": "oikos-webbot-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,8 +14,10 @@
     "start": "node --env-file-if-exists=.env dist/server/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "generate:rpc": "buf generate ../agent-runtime-feature-rust-rewrite/proto --template buf.gen.yaml --path ../agent-runtime-feature-rust-rewrite/proto/agent/conversations/v1/conversations.proto --path ../agent-runtime-feature-rust-rewrite/proto/agent/common/v1/common.proto",
-    "dev:parent": "node dev/parent-server.mjs"
+    "generate:rpc": "buf generate ../agent-runtime/proto --template buf.gen.yaml --path ../agent-runtime/proto/agent/conversations/v1/conversations.proto --path ../agent-runtime/proto/agent/common/v1/common.proto",
+    "dev:parent": "node dev/parent-server.mjs",
+    "lint": "biome ci .",
+    "format": "biome check --write ."
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.16.0",
@@ -31,6 +33,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.6",
     "@bufbuild/buf": "1.75.0",
     "@bufbuild/protoc-gen-es": "2.16.0",
     "@tailwindcss/vite": "4.3.3",

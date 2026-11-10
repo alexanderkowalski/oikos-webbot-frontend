@@ -20,7 +20,10 @@ export function parseMessage(text: string, streaming = false): ParsedMessage {
     return "";
   });
   return {
-    markdown: markdown.replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim(),
+    markdown: markdown
+      .replace(/[ \t]+$/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
     buttons,
   };
 }

@@ -1,0 +1,27 @@
+# Die Abhängigkeiten sind exakt gepinnt; Dependabot schlägt Updates als PR vor, CI prüft sie.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Kleine Updates gesammelt in einem PR, Major-Updates einzeln
+      minor-und-patch:
+        update-types: [minor, patch]
+    ignore:
+      # @types/node folgt der Node-Version im Dockerfile (Node 22), nicht der neuesten Node-Version
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

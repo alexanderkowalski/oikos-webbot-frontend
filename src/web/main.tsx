@@ -5,4 +5,6 @@ import "./styles.css";
 // /iframe/:tenant
 const tenant = decodeURIComponent(window.location.pathname.match(/^\/iframe\/([^/]+)\/?$/)?.[1] ?? "");
 
-createRoot(document.getElementById("root")!).render(<App tenant={tenant} />);
+const root = document.getElementById("root");
+if (!root) throw new Error("#root fehlt in index.html");
+createRoot(root).render(<App tenant={tenant} />);

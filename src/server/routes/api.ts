@@ -1,19 +1,20 @@
 // Webchat-API unter /wc/api/:tenant. Der Browser spricht nur mit diesen Routen.
 import { getConnInfo } from "@hono/node-server/conninfo";
-import { Hono, type Context } from "hono";
+import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { streamSSE } from "hono/streaming";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 import {
-  CreateConversationRequestSchema,
-  SendMessageRequestSchema,
   type ApiError,
+  CONVERSATION_TOKEN_HEADER,
+  CreateConversationRequestSchema,
   type ErrorCode,
   type HistoryMessage,
+  SendMessageRequestSchema,
   type StreamEvent,
 } from "../../shared/api";
-import { toBootstrap, type Config, type Tenant } from "../config";
+import { type Config, type Tenant, toBootstrap } from "../config";
 import { MessageRole } from "../gen/agent/conversations/v1/conversations_pb";
 import { clientIp } from "../guard/client-ip";
 import { InflightRegistry, RateLimiter } from "../guard/rate-limit";
@@ -55,7 +56,6 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     const message =
       {
         message_too_long: errors?.messageTooLong.replace("{max}", String(tenant?.limits.maxMessageLength)),
-        conversation_limit: errors?.conversationLimit,
         rate_limited: errors?.rateLimited,
         busy: errors?.busy,
         unavailable: errors?.unavailable,
@@ -80,9 +80,10 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     if (!limiter.hit(`${tenant.slug}:${key}`, limit, windowMs)) fail(tenant, 429, "rate_limited", true);
   };
 
+  // Das Token steht im Header, nie in der URL: URLs landen in Zugriffslogs von Cloud Run und Load Balancer.
   const conversationOf = (c: Context<Env>) => {
     const tenant = c.get("tenant");
-    const conversationId = verifyToken(env.WEBCHAT_SIGNING_SECRET, tenant.slug, c.req.param("token") ?? "");
+    const conversationId = verifyToken(env.WEBCHAT_SIGNING_SECRET, tenant.slug, c.req.header(CONVERSATION_TOKEN_HEADER) ?? "");
     return conversationId ?? fail(tenant, 404, "session_invalid");
   };
 
@@ -149,7 +150,7 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     }
   });
 
-  app.get("/:tenant/conversations/:token/messages", async (c) => {
+  app.get("/:tenant/conversation/messages", async (c) => {
     const tenant = c.get("tenant");
     const conversationId = conversationOf(c);
     rateLimit(tenant, `history:${c.get("ip")}`, HISTORY_READS_PER_MINUTE, MINUTE);
@@ -169,7 +170,7 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     }
   });
 
-  app.post("/:tenant/conversations/:token/messages", async (c) => {
+  app.post("/:tenant/conversation/messages", async (c) => {
     const tenant = c.get("tenant");
     const receivedAt = performance.now();
     const conversationId = conversationOf(c);
@@ -187,19 +188,10 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     };
 
     try {
-      const max = tenant.limits.maxUserMessagesPerConversation;
-      const [items] = await Promise.all([
-        runtime.listItems(tenant, conversationId, "desc", (page) => countUserMessages(page) >= max),
-        syncTracking(tenant, conversationId, body.tracking),
-      ]);
-      if (countUserMessages(items) >= max) {
-        log.info("conversation_limit_reached", { tenant: tenant.slug, conversationId });
-        fail(tenant, 429, "conversation_limit");
-      }
+      await syncTracking(tenant, conversationId, body.tracking);
     } catch (error) {
       release();
-      if (error instanceof HttpError) throw error;
-      return fromRpc(tenant, error, "ListConversationItems");
+      return fromRpc(tenant, error, "RetrieveConversation");
     }
 
     return streamSSE(c, async (stream) => {
@@ -234,7 +226,14 @@ export function createApi(config: Config, runtime: RuntimeClient) {
       } catch (error) {
         const rpc = describeRpcError(error);
         const code: ErrorCode = rpc.code === "conflict" ? "busy" : rpc.grpcCode === "NotFound" ? "session_invalid" : "unavailable";
-        log.warn("runtime_error", { tenant: tenant.slug, operation: "StreamResponse", conversationId, grpcCode: rpc.grpcCode, code: rpc.code, param: rpc.param });
+        log.warn("runtime_error", {
+          tenant: tenant.slug,
+          operation: "StreamResponse",
+          conversationId,
+          grpcCode: rpc.grpcCode,
+          code: rpc.code,
+          param: rpc.param,
+        });
         await send({ event: "error", data: streamError(tenant, code) });
       } finally {
         release();
@@ -256,11 +255,15 @@ export function createApi(config: Config, runtime: RuntimeClient) {
     });
   });
 
-  app.get("/:tenant/conversations/:token/responses/:responseId/events", async (c) => {
+  app.get("/:tenant/conversation/responses/:responseId/events", async (c) => {
     const tenant = c.get("tenant");
     const conversationId = conversationOf(c);
     const responseId = c.req.param("responseId");
-    const after = z.coerce.bigint().min(0n).optional().safeParse(c.req.query("after") || undefined);
+    const after = z.coerce
+      .bigint()
+      .min(0n)
+      .optional()
+      .safeParse(c.req.query("after") || undefined);
     if (!after.success) fail(tenant, 400, "bad_request");
     rateLimit(tenant, `history:${c.get("ip")}`, HISTORY_READS_PER_MINUTE, MINUTE);
     try {
@@ -288,7 +291,13 @@ export function createApi(config: Config, runtime: RuntimeClient) {
         }
       } catch (error) {
         const rpc = describeRpcError(error);
-        log.warn("runtime_error", { tenant: tenant.slug, operation: "SubscribeResponseEvents", conversationId, grpcCode: rpc.grpcCode, code: rpc.code });
+        log.warn("runtime_error", {
+          tenant: tenant.slug,
+          operation: "SubscribeResponseEvents",
+          conversationId,
+          grpcCode: rpc.grpcCode,
+          code: rpc.code,
+        });
         if (!clientGone) {
           await stream.writeSSE({ event: "error", data: JSON.stringify(streamError(tenant, "unavailable")) }).catch(() => {});
         }
@@ -312,13 +321,16 @@ export function createApi(config: Config, runtime: RuntimeClient) {
 
   function streamError(tenant: Tenant, code: ErrorCode): ApiError {
     const errors = tenant.texts.errors;
-    const message = code === "busy" ? errors.busy : code === "session_invalid" ? errors.sessionExpired : code === "unavailable" ? errors.unavailable : errors.generic;
+    const message =
+      code === "busy"
+        ? errors.busy
+        : code === "session_invalid"
+          ? errors.sessionExpired
+          : code === "unavailable"
+            ? errors.unavailable
+            : errors.generic;
     return { code, message, retryable: code !== "session_invalid" };
   }
 
   return app;
-}
-
-function countUserMessages(items: { item: { case: string | undefined; value?: unknown } }[]) {
-  return items.filter((item) => item.item.case === "message" && (item.item.value as { role: number }).role === MessageRole.USER).length;
 }

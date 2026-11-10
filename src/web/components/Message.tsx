@@ -1,4 +1,4 @@
-import { memo, type MouseEvent } from "react";
+import { memo, useMemo } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -16,8 +16,11 @@ type Props = {
 };
 
 const plugins = [remarkGfm, remarkBreaks];
+// Keine Bilder aus Modellantworten: Ein <img> lädt seine URL ohne Klick und könnte so Daten
+// aus dem Gespräch an fremde Server schicken (Prompt-Injection). Die CSP sperrt das zusätzlich.
+const disallowedElements = ["img"];
 
-function linkComponents(referrerHosts: string[]): Components {
+function linkComponents(referrerHosts: string[], onLinkClick: (href: string) => void): Components {
   return {
     a: ({ href, children }) => {
       let rel = "noopener noreferrer";
@@ -28,7 +31,7 @@ function linkComponents(referrerHosts: string[]): Components {
         // relative oder ungültige URL: Standard behalten
       }
       return (
-        <a href={href} target="_blank" rel={rel}>
+        <a href={href} target="_blank" rel={rel} onClick={(event) => onLinkClick(event.currentTarget.href)}>
           {children}
         </a>
       );
@@ -38,6 +41,7 @@ function linkComponents(referrerHosts: string[]): Components {
 
 export const Message = memo(function Message(props: Props) {
   const { message, avatarUrl, typingLabel, referrerHosts, buttonsActive, onButton, onLinkClick } = props;
+  const components = useMemo(() => linkComponents(referrerHosts, onLinkClick), [referrerHosts, onLinkClick]);
 
   if (message.role === "user") {
     return (
@@ -50,18 +54,14 @@ export const Message = memo(function Message(props: Props) {
   }
 
   const { markdown, buttons } = parseMessage(message.text, message.streaming);
-  const handleClick = (event: MouseEvent) => {
-    const anchor = (event.target as Element).closest("a");
-    if (anchor instanceof HTMLAnchorElement) onLinkClick(anchor.href);
-  };
 
   return (
     <div className="fade-in flex items-start gap-3">
       {avatarUrl && <img src={avatarUrl} alt="" className="size-10 shrink-0 rounded-full" />}
       <div className="flex max-w-[80%] flex-col gap-2 rounded-2xl rounded-tl-none border border-line bg-surface px-4 py-2 shadow-xs">
         {markdown ? (
-          <div className="chat-markdown" onClick={handleClick}>
-            <Markdown remarkPlugins={plugins} components={linkComponents(referrerHosts)}>
+          <div className="chat-markdown">
+            <Markdown remarkPlugins={plugins} disallowedElements={disallowedElements} components={components}>
               {markdown}
             </Markdown>
           </div>
@@ -78,6 +78,7 @@ export const Message = memo(function Message(props: Props) {
           <div className="flex flex-col items-start gap-2">
             {buttons.map((label, index) => (
               <button
+                // biome-ignore lint/suspicious/noArrayIndexKey: Die Liste ist fest je Nachricht; der Index trennt gleich lautende Buttons
                 key={`${index}-${label}`}
                 type="button"
                 disabled={!buttonsActive}

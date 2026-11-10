@@ -1,0 +1,10 @@
+# Einheitlich LF im Repo und im Arbeitsverzeichnis, auch unter Windows (core.autocrlf).
+* text=auto eol=lf
+
+# Generierter Code und Lockfile: in Diffs einklappen
+src/server/gen/** linguist-generated=true
+package-lock.json linguist-generated=true -diff
+
+*.png binary
+*.jpg binary
+*.ico binary
